@@ -1,0 +1,37 @@
+{
+  "name": "daluri",
+  "version": "0.0.1",
+  "description": "OSS auto documentation tool for ReactJS codebases",
+  "main": "cli.js",
+  "type": "module",
+  "bin": {
+    "daluri": "./cli.js"
+  },
+  "keywords": [
+    "cli",
+    "ReactJS",
+    "react",
+    "javascript",
+    "documentation",
+    "generator"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/generator": "^7.26.2",
+    "@babel/parser": "^7.26.2",
+    "@babel/traverse": "^7.25.9",
+    "@babel/types": "^7.26.0",
+    "@octokit/rest": "^21.0.2",
+    "commander": "^12.1.0",
+    "consola": "^3.2.3",
+    "dotenv": "^16.4.5",
+    "fs-extra": "^11.2.0",
+    "inquirer": "^12.1.0",
+    "markdown-it": "^14.1.0",
+    "openai": "^4.73.1",
+    "prettier": "^3.4.1",
+    "simple-git": "^3.27.0",
+    "tmp-promise": "^3.0.3"
+  }
+}

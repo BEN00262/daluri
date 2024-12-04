@@ -35,21 +35,21 @@ import ReactAutoDocumenter from './tool.js';
 
 
     program
-    .name('daluri')
-    .description('A React auto documentation generation tool. Written by BEN00262 <https://github.com/BEN00262>')
-    .version('0.0.1')
-    .requiredOption('--branch_name <string>', 'Branch name')
-    .requiredOption('--repo_name <string>', 'Repository name')
-    .requiredOption('--owner <string>', 'Repository owner')
-    .option('--file-limits <number>', 'Limit the number of files', parseInt, 1)
-    .option('--build-tool <string>', 'Build tool to use (e.g., webpack, vite)', 'webpack')
-    .action(async (options) => {
+        .name('daluri')
+        .description('A React auto documentation generation tool. Written by BEN00262 <https://github.com/BEN00262>')
+        .version('0.0.1')
+        .requiredOption('--branch_name <string>', 'Branch name')
+        .requiredOption('--repo_name <string>', 'Repository name')
+        .requiredOption('--owner <string>', 'Repository owner')
+        .option('--file-limits <number>', 'Limit the number of files', parseInt, 1)
+        .option('--build-tool <string>', 'Build tool to use (e.g., webpack, vite)', 'webpack')
+        .action(async (options) => {
 
-        const autoDocumenter = new ReactAutoDocumenter(options.repo_name, options.branch_name, options.owner, options.fileLimits, options.buildTool);
-        const pr_url = await autoDocumenter.run();
+            const autoDocumenter = new ReactAutoDocumenter(options.repo_name, options.branch_name, options.owner, options.fileLimits, options.buildTool);
+            const pr_url = await autoDocumenter.run();
 
-        consola.info(pr_url);
-    });
+            consola.info(pr_url);
+        });
 
     // Parse the arguments
     program.parse(process.argv);

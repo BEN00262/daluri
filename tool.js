@@ -469,11 +469,11 @@ class ReactAutoDocumenter {
                         const { callee, arguments: args } = path.node;
                     
                         if (
-                        callee.type === 'MemberExpression'    &&
-                        callee.object.name === 'React'        &&
-                        callee.property.name === 'forwardRef' &&
-                        args.length === 1                     &&
-                        args[0].type === 'ArrowFunctionExpression'
+                            callee.type === 'MemberExpression'    &&
+                            callee.object.name === 'React'        &&
+                            callee.property.name === 'forwardRef' &&
+                            args.length === 1                     &&
+                            args[0].type === 'ArrowFunctionExpression'
                         ) {
                         const parentVariableDeclarator = path.findParent((parent) => parent.isVariableDeclarator());
                     

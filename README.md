@@ -1,3 +1,7 @@
+<p align="center">
+    <img src="static/logo.jpg" alt="Daluri Logo">
+</p>
+
 ```markdown
 # Daluri - React Auto Documentation Tool
 

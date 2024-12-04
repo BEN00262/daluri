@@ -10,14 +10,6 @@ Daluri is an open-source tool designed to automatically generate documentation f
 - Adds PropTypes to components.
 - Supports multiple build tools (e.g., webpack, vite).
 
-## Installation
-
-To install Daluri, clone the repository and install the dependencies:
-
-```sh
-git clone https://github.com/YOUR_USERNAME/daluri.git
-cd daluri
-npm install
 ```
 
 ## Usage

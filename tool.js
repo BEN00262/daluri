@@ -483,19 +483,14 @@ class ReactAutoDocumenter {
 
                                         const function_index = parentNode.body.findIndex((node) => node === path.node);
 
-                                        parentNode.body.splice(function_index, 0, t.noop());
-
-                                        parentNode.body[function_index].leadingComments = [{
-                                            type: 'CommentBlock',
-                                            value: docstrings.replace('/*', '').replace('*/', '')
-                                        }];
+                                        path.addComment('leading', docstrings.replace('/*', '').replace('*/', ''));
 
                                         if (!isAlreadyExported) {
                                             path.replaceWith(t.exportNamedDeclaration(path.node, []));
                                         }
                     
                                         const propTypesNode = t.expressionStatement(t.identifier(selfThis.#replace_last_occurrence(proptypes.replace(`import PropTypes from 'prop-types';`, ''), ';', '')));
-                                        parentNode.body.splice(function_index + 2, 0, propTypesNode);
+                                        parentNode.body.splice(function_index + 1, 0, propTypesNode);
                                     })(),
                                     selfThis.#generate_storybook_file(path.node.id.name, component_source_code, file_directory, component_file, component_path, isDefualtExported)
                                 ]);
@@ -548,9 +543,9 @@ class ReactAutoDocumenter {
                                 const component_name = parentVariableDeclarator.node.id.name;
                                 const component_source_code = source.slice(path.node.start, path.node.end);
 
-                                const isDefualtExported = parentNode.body.some(
-                                    (node) => node.type === 'ExportDefaultDeclaration' && node.declaration === path.node
-                                );
+                                // const isDefualtExported = parentNode.body.some(
+                                //     (node) => node.type === 'ExportDefaultDeclaration' && node.declaration === path.node
+                                // );
                         
                                 asyncTasks.push(
                                     (async () => {
@@ -569,7 +564,7 @@ class ReactAutoDocumenter {
                                 
                                                 parentVariableDeclarator.parentPath.parent.body.push(propTypesNode);
                                             })(),
-                                            selfThis.#generate_storybook_file(component_name, component_source_code, file_directory, component_file, component_path, isDefualtExported)
+                                            selfThis.#generate_storybook_file(component_name, component_source_code, file_directory, component_file, component_path)
                                         ]);
                                     })()
                                 );
@@ -578,10 +573,10 @@ class ReactAutoDocumenter {
                     }
                 });
 
+                await Promise.all(asyncTasks);
+
                 // add proptypes imports
                 this.#add_prop_types_imports(ast);
-
-                await Promise.all(asyncTasks);
 
                 const patched_code = await prettier.format(generate(ast, {}, source).code, {
                     parser: "babel"

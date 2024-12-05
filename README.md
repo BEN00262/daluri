@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="static/logo.jpg" alt="Daluri Logo">
+    <img src="static/logo.jpg" alt="Daluri Logo" width="150" height="150">
 </p>
 
 ```markdown

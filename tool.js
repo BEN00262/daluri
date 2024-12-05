@@ -215,9 +215,11 @@ class ReactAutoDocumenter {
      * @param {string} componentName 
      * @param {string} source 
      * @param {string} storybookDir 
-     * @param {string} componentFileLocation 
+     * @param {string} componentFileLocation
+     * @param {string} componentPath
+     * @param {boolean} isDefualtExported
      */
-    async #generate_storybook_file (componentName, source, storybookDir, componentFileLocation) {
+    async #generate_storybook_file (componentName, source, storybookDir, componentFileLocation, componentPath, isDefualtExported = true) {
         consola.info(`Generating Storybook file for ${componentName}...`);
     
         const prompt = `Analyze the following React component code and write a Storybook file for it. Add tags as ['autodocs']. Don't use Typescript annotations, use pure javascript. Include:
@@ -225,7 +227,8 @@ class ReactAutoDocumenter {
         - Example stories (basic usage).
     
       
-        The component is located at ${componentFileLocation} which is in the same folder as where the storybook file will be placed ( use this to patch the imports )
+        The component is located at ${componentPath}, the path is relative to the component location.
+        The component is a ${isDefualtExported ? 'default export' : 'named export'}.
     
         Here's the component code:
         ${source}`;
@@ -364,104 +367,168 @@ class ReactAutoDocumenter {
 
                 const file_directory = path.dirname(file);
                 const component_file = path.basename(file);
+                const component_path = path.join(file_directory, component_file);
 
                 traverse.default(ast, {
                     VariableDeclarator(path) {
                         const { init, id } = path.node;
             
                         if (init?.type === 'ArrowFunctionExpression' && id?.type === 'Identifier' && path.parentPath.parent.type === 'Program') {
-                        const body = init.body;
-            
-                        const isReactComponent =
-                            body.type === 'JSXElement' ||
-                            (body.type === 'BlockStatement' &&
-                            body.body.some(
-                                (statement) =>
-                                statement.type === 'ReturnStatement' &&
-                                statement.argument?.type === 'JSXElement'
-                            ));
-            
-                        if (!isReactComponent) {
-                            return;
-                        }
-            
-                        const componentName = id.name;
-            
-                        asyncTasks.push((async () => {
-                            await Promise.all([
-                            (async () => {
-                                const [docstrings, proptypes] = await Promise.all([
-                                    selfThis.#generate_jsdocs(componentName, source), 
-                                    selfThis.#generate_proptypes(componentName, source)
+                            const body = init.body;
+                
+                            const isReactComponent =
+                                body.type === 'JSXElement' ||
+                                (body.type === 'BlockStatement' &&
+                                body.body.some(
+                                    (statement) =>
+                                        statement.type === 'ReturnStatement' &&
+                                        (statement.argument?.type === 'JSXElement' || statement.argument?.type === 'JSXFragment')
+                                ));
+                
+                            if (!isReactComponent) {
+                                return;
+                            }
+                
+                            const component_name = id.name;
+                            const component_source_code = source.slice(path.node.start, path.node.end);
+                
+                            // Check if the component is exported
+                            let parentNode = path.parentPath.parent.type === 'File' ? path.parentPath.parent.program : path.parentPath.parent;
+
+                            const isDefualtExported = parentNode.body.some(
+                                (node) => node.type === 'ExportDefaultDeclaration' && node.declaration === path.node
+                            );
+
+                            asyncTasks.push((async () => {
+                                await Promise.all([
+                                    (async () => {
+                                        const isAlreadyExported = parentNode.body.some(
+                                            (node) =>
+                                              (node.type === 'ExportNamedDeclaration' && node.declaration === path.node) ||
+                                              (node.type === 'ExportDefaultDeclaration' && node.declaration === path.node)
+                                        );
+
+                                        const [docstrings, proptypes] = await Promise.all([
+                                            selfThis.#generate_jsdocs(component_name, component_source_code), 
+                                            selfThis.#generate_proptypes(component_name, component_source_code)
+                                        ]);
+
+                                        const variable_declarator_index = parentNode.body.findIndex(
+                                            (node) => (node?.declarations?.[0]?.type === path.node.type) && (node?.declarations?.[0]?.id?.name === path.node.id.name)
+                                        );
+
+                                        parentNode.body.splice(variable_declarator_index, 0, t.noop());
+
+                                        parentNode.body[variable_declarator_index].leadingComments = [{
+                                            type: 'CommentBlock',
+                                            value: docstrings.replace('/*', '').replace('*/', '')
+                                        }];
+
+                                        if (!isAlreadyExported) {
+                                            const variableDeclaration = t.variableDeclaration("const", [path.node]);
+                                            path.parentPath.replaceWith(t.exportNamedDeclaration(variableDeclaration, []));
+                                        }
+
+                                        const propTypesNode = t.expressionStatement(t.identifier(selfThis.#replace_last_occurrence(proptypes.replace(`import PropTypes from 'prop-types';`, ''), ';', '')));
+
+                                        parentNode.body.splice(variable_declarator_index + 2, 0, propTypesNode);
+                                    })(),
+                    
+                                    selfThis.#generate_storybook_file(path.node.id.name, component_source_code, file_directory, component_file, component_path, isDefualtExported)
                                 ]);
-            
-                                path.parentPath.addComment('leading', docstrings.replace('/*', '').replace('*/', ''));
-            
-                                const propTypesNode = t.expressionStatement(t.identifier(selfThis.#replace_last_occurrence(proptypes.replace(`import PropTypes from 'prop-types';`, ''), ';', '')));
-            
-                                path.parentPath.parent.body.push(propTypesNode);
-                            })(),
-            
-                            selfThis.#generate_storybook_file(path.node.id.name, source, file_directory, component_file)
-                            ]);
-                        })());
+                            })());
                         }
                     },
                     
                     FunctionDeclaration(path) {
                         const { id, body } = path.node;
                         if (id && /^[A-Z]/.test(id.name)) {
-                        const isReactComponent = body.body.some(
-                            (statement) =>
-                            statement.type === 'ReturnStatement' &&
-                            statement.argument?.type === 'JSXElement'
-                        );
-            
-                        if (!isReactComponent) {
-                            return;
-                        }
-            
-                        asyncTasks.push((async () => {
-            
-                            await Promise.all([
-                            (async () => {
-                                const [docstrings, proptypes] = await Promise.all([
-                                    selfThis.#generate_jsdocs(component_name, source), 
-                                    selfThis.#generate_proptypes(component_name, source)
-                                ]);
-            
-                                path.parentPath.addComment('leading', docstrings.replace('/*', '').replace('*/', ''));
-            
-                                const propTypesNode = t.expressionStatement(t.identifier(selfThis.#replace_last_occurrence(proptypes.replace(`import PropTypes from 'prop-types';`, ''), ';', '')));
-                                
+                            const isReactComponent = body.body.some(
+                                (statement) =>
+                                statement.type === 'ReturnStatement' &&
+                                (statement.argument?.type === 'JSXElement' || statement.argument?.type === 'JSXFragment')
+                            );
                 
-                                body.body.push(propTypesNode); // append it to the end of the function body
-                            })(),
-                            selfThis.#generate_storybook_file(path.node.id.name, source, file_directory, component_file)
-                            ]);
-                        })());
+                            if (!isReactComponent) {
+                                return;
+                            }
+
+                            const component_name = id.name;
+                            const component_source_code = source.slice(path.node.start, path.node.end);
+                
+                            let parentNode = path.parentPath.parent;
+                            
+                            if (parentNode.type === 'File') {
+                                parentNode = parentNode.program;
+                            }
+
+                            const isDefualtExported = parentNode.body.some(
+                                (node) => node.type === 'ExportDefaultDeclaration' && node.declaration === path.node
+                            );
+
+                            asyncTasks.push((async () => {
+
+                                await Promise.all([
+                                    (async () => {
+                                        const isAlreadyExported = parentNode.body.some(
+                                            (node) =>
+                                              (node.type === 'ExportNamedDeclaration' && node.declaration === path.node) ||
+                                              (node.type === 'ExportDefaultDeclaration' && node.declaration === path.node)
+                                        );
+
+                                        const [docstrings, proptypes] = await Promise.all([
+                                            selfThis.#generate_jsdocs(component_name, component_source_code), 
+                                            selfThis.#generate_proptypes(component_name, component_source_code)
+                                        ]);
+
+                                        const function_index = parentNode.body.findIndex((node) => node === path.node);
+
+                                        parentNode.body.splice(function_index, 0, t.noop());
+
+                                        parentNode.body[function_index].leadingComments = [{
+                                            type: 'CommentBlock',
+                                            value: docstrings.replace('/*', '').replace('*/', '')
+                                        }];
+
+                                        if (!isAlreadyExported) {
+                                            path.replaceWith(t.exportNamedDeclaration(path.node, []));
+                                        }
+                    
+                                        const propTypesNode = t.expressionStatement(t.identifier(selfThis.#replace_last_occurrence(proptypes.replace(`import PropTypes from 'prop-types';`, ''), ';', '')));
+                                        parentNode.body.splice(function_index + 2, 0, propTypesNode);
+                                    })(),
+                                    selfThis.#generate_storybook_file(path.node.id.name, component_source_code, file_directory, component_file, component_path, isDefualtExported)
+                                ]);
+                            })());
                         }
                     },
                     
                     ClassDeclaration(path) {
                         const { id, superClass } = path.node;
                         if (superClass?.type === 'MemberExpression' && superClass.object.name === 'React') {
-                        asyncTasks.push((async () => {
-                            await Promise.all([
-                            (async () => {
-                                const [docstrings, proptypes] = await Promise.all([
-                                    selfThis.#generate_jsdocs(component_name, source), 
-                                    selfThis.#generate_proptypes(component_name, source)
-                                ]);
-            
-                                path.parentPath.addComment('leading', docstrings.replace('/*', '').replace('*/', ''));
+                            const component_name = id.name;
+                            const component_source_code = source.slice(path.node.start, path.node.end);
 
-                                const propTypesNode = t.expressionStatement(t.identifier(selfThis.#replace_last_occurrence(proptypes.replace(`import PropTypes from 'prop-types';`, ''), ';', '')));
-                                path.parentPath.parent.body.push(propTypesNode);
-                            })(),
-                            selfThis.#generate_storybook_file(path.node.id.name, source, file_directory, component_file)
-                            ]);
-                        })());
+                            const isDefualtExported = parentNode.body.some(
+                                (node) => node.type === 'ExportDefaultDeclaration' && node.declaration === path.node
+                            );
+
+                            asyncTasks.push((async () => {
+                                await Promise.all([
+                                    (async () => {
+                                        const [docstrings, proptypes] = await Promise.all([
+                                            selfThis.#generate_jsdocs(component_name, component_source_code),
+                                            selfThis.#generate_proptypes(component_name, component_source_code)
+                                        ]);
+                    
+                                        path.parentPath.addComment('leading', docstrings.replace('/*', '').replace('*/', ''));
+
+                                        const propTypesNode = t.expressionStatement(t.identifier(selfThis.#replace_last_occurrence(proptypes.replace(`import PropTypes from 'prop-types';`, ''), ';', '')));
+                                        path.parentPath.parent.body.push(propTypesNode);
+                                    })(),
+                                    selfThis.#generate_storybook_file(path.node.id.name, component_source_code, file_directory, component_file, component_path, isDefualtExported)
+                                ]);
+                            })());
                         }
                     },
             
@@ -475,33 +542,38 @@ class ReactAutoDocumenter {
                             args.length === 1                     &&
                             args[0].type === 'ArrowFunctionExpression'
                         ) {
-                        const parentVariableDeclarator = path.findParent((parent) => parent.isVariableDeclarator());
-                    
-                        if (parentVariableDeclarator) {
-                            const componentName = parentVariableDeclarator.node.id.name;
-                    
-                            asyncTasks.push(
-                            (async () => {
-                                await Promise.all([
-                                (async () => {
-                                    const [docstrings, proptypes] = await Promise.all([
-                                        selfThis.#generate_jsdocs(componentName, source),
-                                        selfThis.#generate_proptypes(componentName, source),
-                                    ]);
-                    
-                                    parentVariableDeclarator.parentPath.addComment('leading',docstrings.replace('/*', '').replace('*/', ''));
-                    
-                                    const propTypesNode = t.expressionStatement(
-                                        t.identifier(selfThis.#replace_last_occurrence(proptypes.replace( `import PropTypes from 'prop-types';`, '' ), ';', ''))
-                                    );
-                    
-                                    parentVariableDeclarator.parentPath.parent.body.push(propTypesNode);
-                                })(),
-                                selfThis.#generate_storybook_file(componentName, source, file_directory)
-                                ]);
-                            })()
-                            );
-                        }
+                            const parentVariableDeclarator = path.findParent((parent) => parent.isVariableDeclarator());
+                        
+                            if (parentVariableDeclarator) {
+                                const component_name = parentVariableDeclarator.node.id.name;
+                                const component_source_code = source.slice(path.node.start, path.node.end);
+
+                                const isDefualtExported = parentNode.body.some(
+                                    (node) => node.type === 'ExportDefaultDeclaration' && node.declaration === path.node
+                                );
+                        
+                                asyncTasks.push(
+                                    (async () => {
+                                        await Promise.all([
+                                            (async () => {
+                                                const [docstrings, proptypes] = await Promise.all([
+                                                    selfThis.#generate_jsdocs(component_name, component_source_code),
+                                                    selfThis.#generate_proptypes(component_name, component_source_code),
+                                                ]);
+                                
+                                                parentVariableDeclarator.parentPath.addComment('leading',docstrings.replace('/*', '').replace('*/', ''));
+                                
+                                                const propTypesNode = t.expressionStatement(
+                                                    t.identifier(selfThis.#replace_last_occurrence(proptypes.replace( `import PropTypes from 'prop-types';`, '' ), ';', ''))
+                                                );
+                                
+                                                parentVariableDeclarator.parentPath.parent.body.push(propTypesNode);
+                                            })(),
+                                            selfThis.#generate_storybook_file(component_name, component_source_code, file_directory, component_file, component_path, isDefualtExported)
+                                        ]);
+                                    })()
+                                );
+                            }
                         }
                     }
                 });

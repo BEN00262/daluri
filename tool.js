@@ -481,16 +481,23 @@ class ReactAutoDocumenter {
                                             selfThis.#generate_proptypes(component_name, component_source_code)
                                         ]);
 
-                                        const function_index = parentNode.body.findIndex((node) => node === path.node);
+                                        const function_index = parentNode.body.findIndex((node) => 
+                                            (node === path.node) || ((node?.declaration?.type === path.node.type) && (node?.declaration?.id?.name === path.node.id.name))
+                                        );
 
-                                        path.addComment('leading', docstrings.replace('/*', '').replace('*/', ''));
+                                        parentNode.body.splice(function_index, 0, t.noop());
+
+                                        parentNode.body[function_index].leadingComments = [{
+                                            type: 'CommentBlock',
+                                            value: docstrings.replace('/*', '').replace('*/', '')
+                                        }];
 
                                         if (!isAlreadyExported) {
                                             path.replaceWith(t.exportNamedDeclaration(path.node, []));
                                         }
                     
                                         const propTypesNode = t.expressionStatement(t.identifier(selfThis.#replace_last_occurrence(proptypes.replace(`import PropTypes from 'prop-types';`, ''), ';', '')));
-                                        parentNode.body.splice(function_index + 1, 0, propTypesNode);
+                                        parentNode.body.splice(function_index + 2, 0, propTypesNode);
                                     })(),
                                     selfThis.#generate_storybook_file(path.node.id.name, component_source_code, file_directory, component_file, component_path, isDefualtExported)
                                 ]);

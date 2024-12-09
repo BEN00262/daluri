@@ -1,5 +1,6 @@
-<p align="center">
+<p align="center" style="display: flex;flex-direction:column;align-items:center;gap:20px;">
     <img src="static/logo.jpg" alt="Daluri Logo" width="150" height="150">
+    <a href="https://v0-daluri-l6ajb7fybns.vercel.app/">Daluri Website</a>
 </p>
 
 ```markdown

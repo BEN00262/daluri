@@ -47,6 +47,11 @@ class ReactAutoDocumenter {
         this.mode = mode;
         this.local_path = local_path;
 
+        this.analytics = {
+            number_of_files: 0,
+            number_of_components: 0
+        };
+
         // initialization of base libraries
         this.octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
         this.openai = new OpenAIApi(process.env.OPENAI_API_KEY);
@@ -351,6 +356,8 @@ class ReactAutoDocumenter {
 
         const selfThis = this;
 
+        this.analytics.number_of_files = jsx_files.length;
+
         for (const file of jsx_files) {
             try {
                 if (processed_files >= file_limits) {
@@ -406,6 +413,8 @@ class ReactAutoDocumenter {
                                 (node) => node.type === 'ExportDefaultDeclaration' && node.declaration === path.node
                             );
 
+                            selfThis.analytics.number_of_components += 1;
+
                             asyncTasks.push((async () => {
                                 await Promise.all([
                                     (async () => {
@@ -459,6 +468,8 @@ class ReactAutoDocumenter {
                             if (!isReactComponent) {
                                 return;
                             }
+
+                            selfThis.analytics.number_of_components += 1;
 
                             const component_name = id.name;
                             const component_source_code = source.slice(path.node.start, path.node.end);
@@ -522,6 +533,8 @@ class ReactAutoDocumenter {
                                 (node) => node.type === 'ExportDefaultDeclaration' && node.declaration === path.node
                             );
 
+                            selfThis.analytics.number_of_components += 1;
+
                             asyncTasks.push((async () => {
                                 await Promise.all([
                                     (async () => {
@@ -556,6 +569,8 @@ class ReactAutoDocumenter {
                             if (parentVariableDeclarator) {
                                 const component_name = parentVariableDeclarator.node.id.name;
                                 const component_source_code = source.slice(path.node.start, path.node.end);
+
+                                selfThis.analytics.number_of_components += 1;
 
                                 // const isDefualtExported = parentNode.body.some(
                                 //     (node) => node.type === 'ExportDefaultDeclaration' && node.declaration === path.node
@@ -612,25 +627,27 @@ class ReactAutoDocumenter {
     async run() {
         if (this.mode === 'local') {
             await this.loop_and_add_documentation_to_files(this.file_limits, this.local_path);
-            return;
+        } else {
+            const { path: temporary_directory, cleanup } = await tmpFiles.dir({
+                unsafeCleanup: true,
+                keep: true,
+            });
+    
+            try {
+                const git = simpleGit(temporary_directory);
+    
+                await this.#clone_repository(git, temporary_directory);
+                await this.loop_and_add_documentation_to_files(this.file_limits, temporary_directory);
+                await this.commit_and_push_changes(git);
+    
+                return this.create_pull_request();
+            } finally {
+                cleanup();
+            }
         }
 
-        const { path: temporary_directory, cleanup } = await tmpFiles.dir({
-            unsafeCleanup: true,
-            keep: true,
-        });
-
-        try {
-            const git = simpleGit(temporary_directory);
-
-            await this.#clone_repository(git, temporary_directory);
-            await this.loop_and_add_documentation_to_files(this.file_limits, temporary_directory);
-            await this.commit_and_push_changes(git);
-
-            return this.create_pull_request();;
-        } finally {
-            cleanup();
-        }
+        // log the analytics
+        consola.table(this.analytics);
     }
 }
 

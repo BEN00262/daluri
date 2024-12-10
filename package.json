@@ -1,6 +1,6 @@
 {
   "name": "daluri",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "OSS auto documentation tool for ReactJS codebases",
   "main": "cli.js",
   "type": "module",

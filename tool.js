@@ -33,15 +33,19 @@ class ReactAutoDocumenter {
      * @param {string} repo_name 
      * @param {string} branch_name 
      * @param {string} owner 
+     * @param {string} local_path
      *  @param {number} file_limits 
      * @param {string} build_tool 
+     * @param {string} mode
      */
-    constructor(repo_name, branch_name, owner, file_limits = 5, build_tool = "webpack") { 
+    constructor(repo_name, branch_name, owner, local_path, file_limits = 5, build_tool = "webpack", mode = "local") { 
         this.build_tool = build_tool;
         this.repo_name = repo_name;
         this.branch_name = branch_name;
         this.owner = owner;
         this.file_limits = file_limits;
+        this.mode = mode;
+        this.local_path = local_path;
 
         // initialization of base libraries
         this.octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
@@ -603,6 +607,11 @@ class ReactAutoDocumenter {
     }
 
     async run() {
+        if (this.mode === 'local') {
+            await this.loop_and_add_documentation_to_files(this.file_limits, this.local_path);
+            return;
+        }
+
         const { path: temporary_directory, cleanup } = await tmpFiles.dir({
             unsafeCleanup: true,
             keep: true,

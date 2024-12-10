@@ -54,7 +54,7 @@ const program = new Command();
             const autoDocumenter = new ReactAutoDocumenter(options.repo_name, options.branch_name, options.owner, options.fileLimits, options.buildTool);
             const pr_url = await autoDocumenter.run();
 
-            consola.info(pr_url);
+            consola.success(pr_url);
         });
 
     program

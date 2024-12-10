@@ -30,21 +30,21 @@ When you run Daluri for the first time, it will prompt you to enter your GitHub 
 To run Daluri, use the following command:
 
 ```sh
-npx daluri --branch_name <branch_name> --repo_name <repo_name> --owner <owner> [options]
+npx daluri github --branch <branch_name> --repo <repo_name> --owner <owner> [options]
 ```
 
 ### Options
 
-- `--branch_name <string>`: The name of the branch to document.
-- `--repo_name <string>`: The name of the repository.
+- `--branch <string>`: The name of the branch to document.
+- `--repo <string>`: The name of the repository.
 - `--owner <string>`: The owner of the repository.
-- `--file-limits <number>`: Limit the number of files to process (default: 1).
-- `--build-tool <string>`: The build tool to use (e.g., webpack, vite) (default: webpack).
+- `--file-limit <number>`: Limit the number of files to process (default: 1).
+- `--build <string>`: The build tool to use (e.g., webpack, vite) (default: webpack).
 
 ### Example
 
 ```sh
-npx daluri --branch_name main --repo_name my-react-app --owner my-github-username --file-limits 5 --build-tool webpack
+npx daluri github --branch main --repo my-react-app --owner my-github-username --file-limit 5 --build webpack
 ```
 
 ## How It Works

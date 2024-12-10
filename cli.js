@@ -6,35 +6,78 @@ import inquirer from 'inquirer';
 import os from 'os';
 import { Command } from 'commander';
 import consola from 'consola';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
 import tmpFiles from "tmp-promise";
 import simpleGit from "simple-git";
 import ReactAutoDocumenter from './tool.js';
 
 const program = new Command();
 
-async function vercel_hosting() {
-    // check if vercel is available globally
-    if (!fs.existsSync(path.join(os.homedir(), '.npm-global/bin/vercel'))) {
-        consola.info('Installing vercel globally using `npm i -g vercel`');
-        await exec('npm i -g vercel');
+async function vercel_hosting(is_github = false) {
+    // Helper function to run a command and stream output
+    const runCommand = (command, args = [], options = {}) => {
+        return new Promise((resolve, reject) => {
+            const child = spawn(command, args, { stdio: 'inherit', shell: true, ...options });
+
+            child.on('error', (error) => reject(error));
+            child.on('close', (code) => {
+                if (code === 0) resolve();
+                else reject(new Error(`Command failed with exit code ${code}`));
+            });
+        });
+    };
+
+    // Check if Vercel is available globally
+    let vercelInstalled = false;
+
+    try {
+        await runCommand('vercel', ['--version']);
+        vercelInstalled = true;
+    } catch (error) {
+        vercelInstalled = false;
+    }
+
+    if (!vercelInstalled) {
+        consola.info('Installing Vercel globally using `npm i -g vercel`');
+        await runCommand('npm', ['i', '-g', 'vercel']);
         consola.success('Vercel installed successfully');
     }
 
-    // check if the user is logged in
-    consola.info('Checking if you are logged in to vercel');
-    await promisify(exec)('vercel whoami');
+    // Check if the user is logged in to Vercel
+    consola.info('Checking if you are logged in to Vercel');
+    await runCommand('vercel', ['whoami']);
 
-    // build the storybook docs
-    consola.info('Building the storybook documentation');
-    await promisify(exec)('npx storybook build');
+    if (is_github) {
+        // Run npm ci -f
+        consola.info('Running `npm ci -f`');
+        await runCommand('npm', ['ci', '-f']);
+    }
 
-    // deploy the storybook docs
-    consola.info('Deploying the storybook documentation');
-    const { stdout, stderr } = await promisify(exec)('vercel --prod');
+    // Build the Storybook docs
+    consola.info('Building the Storybook documentation');
+    await runCommand('npx', ['storybook', 'build']);
 
-    consola.success(stdout);
+    // Deploy the Storybook docs
+    consola.info('Deploying the Storybook documentation');
+    
+    try {
+        const deployProcess = spawn('vercel', ['--cwd', 'storybook-static', '--prod', '--yes'], { shell: true });
+        deployProcess.stdout.on('data', (data) => process.stdout.write(data.toString()));
+        deployProcess.stderr.on('data', (data) => process.stderr.write(data.toString()));
+
+        await new Promise((resolve, reject) => {
+            deployProcess.on('close', (code) => {
+                if (code === 0) {
+                    consola.success('Deployment successful!');
+                    resolve();
+                } else {
+                    reject(new Error(`Deployment failed with exit code ${code}`));
+                }
+            });
+        });
+    } catch (error) {
+        consola.error(`Deployment failed: ${error.message}`);
+    }
 }
 
 ;(async () => {
@@ -148,7 +191,7 @@ async function vercel_hosting() {
     
                 switch (options.hoster) {
                     case 'vercel':
-                        await vercel_hosting();
+                        await vercel_hosting(true);
                         break;
                     default:
                         consola.error('Invalid hoster');

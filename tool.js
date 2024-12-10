@@ -647,7 +647,7 @@ class ReactAutoDocumenter {
         }
 
         // log the analytics
-        consola.table(this.analytics);
+        console.table(this.analytics);
     }
 }
 

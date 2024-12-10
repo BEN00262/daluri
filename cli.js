@@ -59,11 +59,16 @@ const program = new Command();
 
     program
         .command('local')
-        .requiredOption('--path <string>', 'Path to the project')
+        .option('--path <string>', 'Path to the project', '.')
         .option('--file-limits <number>', 'Limit the number of files', parseInt, 1)
         .option('--build-tool <string>', 'Build tool to use (e.g., webpack, vite)', 'webpack')
         .action(async (options) => {
-            const autoDocumenter = new ReactAutoDocumenter(options.path, options.fileLimits, options.buildTool);
+
+            const autoDocumenter = new ReactAutoDocumenter(
+                null, null, null,
+                options.path, options.fileLimits, options.buildTool
+            );
+
             await autoDocumenter.run();
 
             consola.success('Documentation generated successfully');

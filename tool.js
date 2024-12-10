@@ -625,37 +625,45 @@ class ReactAutoDocumenter {
     }
 
     async run() {
-        if (this.mode === 'local') {
-            // check if storybook is installed
-            const storybookExists = fs.existsSync(
-                path.join(this.local_path, ".storybook") // check if storybook exists
-            );
+        switch (this.mode) {
+            case 'local':
+                {
+                    const storybookExists = fs.existsSync(
+                        path.join(this.local_path, ".storybook") // check if storybook exists
+                    );
 
-            if (!storybookExists) {
-                consola.warn("Please initialize storybook in your project before running this tool");
-                consola.warn("Run `npx storybook@latest init` in your project root directory to initialize storybook");
+                    if (!storybookExists) {
+                        consola.warn("Please initialize storybook in your project before running this tool");
+                        consola.warn("Run `npx storybook@latest init` in your project root directory to initialize storybook");
 
-                return;
-            }
+                        return;
+                    }
 
-            await this.loop_and_add_documentation_to_files(this.file_limits, this.local_path);
-        } else {
-            const { path: temporary_directory, cleanup } = await tmpFiles.dir({
-                unsafeCleanup: true,
-                keep: true,
-            });
-    
-            try {
-                const git = simpleGit(temporary_directory);
-    
-                await this.clone_repository(git, temporary_directory);
-                await this.loop_and_add_documentation_to_files(this.file_limits, temporary_directory);
-                await this.commit_and_push_changes(git);
-    
-                return this.create_pull_request();
-            } finally {
-                cleanup();
-            }
+                    await this.loop_and_add_documentation_to_files(this.file_limits, this.local_path);
+                    break;
+                }
+
+            default:
+                {
+                    const { path: temporary_directory, cleanup } = await tmpFiles.dir({
+                        unsafeCleanup: true,
+                        keep: true,
+                    });
+            
+                    try {
+                        const git = simpleGit(temporary_directory);
+            
+                        await this.clone_repository(git, temporary_directory);
+                        await this.loop_and_add_documentation_to_files(this.file_limits, temporary_directory);
+                        await this.commit_and_push_changes(git);
+            
+                        return this.create_pull_request();
+                    } finally {
+                        cleanup();
+                    }
+
+                    break;
+                }
         }
 
         // log the analytics

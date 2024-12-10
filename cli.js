@@ -31,7 +31,10 @@ async function vercel_hosting(is_github = false) {
     let vercelInstalled = false;
 
     try {
-        await run_shell_command('vercel', ['--version']);
+        await run_shell_command('vercel', ['--version'], {
+            stdio: 'ignore',
+        });
+        
         vercelInstalled = true;
     } catch (error) {
         vercelInstalled = false;

@@ -14,7 +14,7 @@ import ReactAutoDocumenter from './tool.js';
 const program = new Command();
 
 // Helper function to run a command and stream output
-const runCommand = (command, args = [], options = {}) => {
+const run_shell_command = (command, args = [], options = {}) => {
     return new Promise((resolve, reject) => {
         const child = spawn(command, args, { stdio: 'inherit', shell: true, ...options });
 
@@ -31,7 +31,7 @@ async function vercel_hosting(is_github = false) {
     let vercelInstalled = false;
 
     try {
-        await runCommand('vercel', ['--version']);
+        await run_shell_command('vercel', ['--version']);
         vercelInstalled = true;
     } catch (error) {
         vercelInstalled = false;
@@ -39,23 +39,23 @@ async function vercel_hosting(is_github = false) {
 
     if (!vercelInstalled) {
         consola.info('Installing Vercel globally using `npm i -g vercel`');
-        await runCommand('npm', ['i', '-g', 'vercel']);
+        await run_shell_command('npm', ['i', '-g', 'vercel']);
         consola.success('Vercel installed successfully');
     }
 
     // Check if the user is logged in to Vercel
     consola.info('Checking if you are logged in to Vercel');
-    await runCommand('vercel', ['whoami']);
+    await run_shell_command('vercel', ['whoami']);
 
     if (is_github) {
         // Run npm ci -f
         consola.info('Running `npm ci -f`');
-        await runCommand('npm', ['ci', '-f']);
+        await run_shell_command('npm', ['ci', '-f']);
     }
 
     // Build the Storybook docs
     consola.info('Building the Storybook documentation');
-    await runCommand('npx', ['storybook', 'build']);
+    await run_shell_command('npx', ['storybook', 'build']);
 
     // Deploy the Storybook docs
     consola.info('Deploying the Storybook documentation');

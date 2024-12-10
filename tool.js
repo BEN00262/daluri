@@ -218,24 +218,27 @@ class ReactAutoDocumenter {
      * 
      * @param {string} componentName 
      * @param {string} source 
+     * @param {string} full_source_code
      * @param {string} storybookDir 
      * @param {string} componentFileLocation
      * @param {string} componentPath
      * @param {boolean} isDefualtExported
      */
-    async #generate_storybook_file (componentName, source, storybookDir, componentFileLocation, componentPath, isDefualtExported = true) {
+    async #generate_storybook_file (componentName, source, full_source_code, storybookDir, componentFileLocation, componentPath, isDefualtExported = true) {
         consola.info(`Generating Storybook file for ${componentName}...`);
+        const conjoined_path = path.join(storybookDir, componentName);
     
-        const prompt = `Analyze the following React component code and write a Storybook file for it. Add tags as ['autodocs']. Don't use Typescript annotations, use pure javascript. Include:
-        - A description of what the component does.
-        - Example stories (basic usage).
-    
-      
-        The component is located at ${componentPath}, the path is relative to the component location.
-        The component is a ${isDefualtExported ? 'default export' : 'named export'}.
-    
-        Here's the component code:
-        ${source}`;
+        const prompt = `Analyze the following React component code and write a Storybook file for it. Add tags as ['autodocs'], title should be ${conjoined_path.substring(conjoined_path.indexOf("src")).replace(/\\/g, "/")}. Use double quotes for every string or escape any quotes within the strings. Don't use Typescript annotations, use pure javascript. Include:
+    - A description of what the component does.
+    - Example stories (basic usage).
+
+  
+    The component is located at ${path.basename(componentFileLocation)}, use this in the imports as is.
+    The full file source is:\n\n\n${full_source_code}\n\n\n
+    The component is a ${isDefualtExported ? 'default export' : 'named export'}.
+
+    Here's the component code:
+    ${source}`;
     
         const story_content = await this.#ai_execute_prompt(prompt);
         
@@ -438,7 +441,7 @@ class ReactAutoDocumenter {
                                         parentNode.body.splice(variable_declarator_index + 2, 0, propTypesNode);
                                     })(),
                     
-                                    selfThis.#generate_storybook_file(path.node.id.name, component_source_code, file_directory, component_file, component_path, isDefualtExported)
+                                    selfThis.#generate_storybook_file(path.node.id.name, component_source_code, source, file_directory, component_file, component_path, isDefualtExported)
                                 ]);
                             })());
                         }
@@ -503,7 +506,7 @@ class ReactAutoDocumenter {
                                         const propTypesNode = t.expressionStatement(t.identifier(selfThis.#replace_last_occurrence(proptypes.replace(`import PropTypes from 'prop-types';`, ''), ';', '')));
                                         parentNode.body.splice(function_index + 2, 0, propTypesNode);
                                     })(),
-                                    selfThis.#generate_storybook_file(path.node.id.name, component_source_code, file_directory, component_file, component_path, isDefualtExported)
+                                    selfThis.#generate_storybook_file(path.node.id.name, component_source_code, source, file_directory, component_file, component_path, isDefualtExported)
                                 ]);
                             })());
                         }
@@ -532,7 +535,7 @@ class ReactAutoDocumenter {
                                         const propTypesNode = t.expressionStatement(t.identifier(selfThis.#replace_last_occurrence(proptypes.replace(`import PropTypes from 'prop-types';`, ''), ';', '')));
                                         path.parentPath.parent.body.push(propTypesNode);
                                     })(),
-                                    selfThis.#generate_storybook_file(path.node.id.name, component_source_code, file_directory, component_file, component_path, isDefualtExported)
+                                    selfThis.#generate_storybook_file(path.node.id.name, component_source_code, source, file_directory, component_file, component_path, isDefualtExported)
                                 ]);
                             })());
                         }
@@ -575,7 +578,7 @@ class ReactAutoDocumenter {
                                 
                                                 parentVariableDeclarator.parentPath.parent.body.push(propTypesNode);
                                             })(),
-                                            selfThis.#generate_storybook_file(component_name, component_source_code, file_directory, component_file, component_path)
+                                            selfThis.#generate_storybook_file(component_name, component_source_code, source, file_directory, component_file, component_path)
                                         ]);
                                     })()
                                 );

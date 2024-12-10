@@ -259,7 +259,7 @@ class ReactAutoDocumenter {
      * @param {import("simple-git").SimpleGit} git 
      * @param {string} temporary_directory
      */
-    async #clone_repository(git, temporary_directory) {
+    async clone_repository(git, temporary_directory) {
         await git.clone(`https://github.com/${this.owner}/${this.repo_name}.git`, temporary_directory);
         await git.checkout(this.branch_name);
         consola.info("Repository cloned to:", temporary_directory);
@@ -648,7 +648,7 @@ class ReactAutoDocumenter {
             try {
                 const git = simpleGit(temporary_directory);
     
-                await this.#clone_repository(git, temporary_directory);
+                await this.clone_repository(git, temporary_directory);
                 await this.loop_and_add_documentation_to_files(this.file_limits, temporary_directory);
                 await this.commit_and_push_changes(git);
     

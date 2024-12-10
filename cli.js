@@ -13,20 +13,20 @@ import ReactAutoDocumenter from './tool.js';
 
 const program = new Command();
 
-async function vercel_hosting(is_github = false) {
-    // Helper function to run a command and stream output
-    const runCommand = (command, args = [], options = {}) => {
-        return new Promise((resolve, reject) => {
-            const child = spawn(command, args, { stdio: 'inherit', shell: true, ...options });
+// Helper function to run a command and stream output
+const runCommand = (command, args = [], options = {}) => {
+    return new Promise((resolve, reject) => {
+        const child = spawn(command, args, { stdio: 'inherit', shell: true, ...options });
 
-            child.on('error', (error) => reject(error));
-            child.on('close', (code) => {
-                if (code === 0) resolve();
-                else reject(new Error(`Command failed with exit code ${code}`));
-            });
+        child.on('error', (error) => reject(error));
+        child.on('close', (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(`Command failed with exit code ${code}`));
         });
-    };
+    });
+};
 
+async function vercel_hosting(is_github = false) {
     // Check if Vercel is available globally
     let vercelInstalled = false;
 
@@ -59,7 +59,7 @@ async function vercel_hosting(is_github = false) {
 
     // Deploy the Storybook docs
     consola.info('Deploying the Storybook documentation');
-    
+
     try {
         const deployProcess = spawn('vercel', ['--cwd', 'storybook-static', '--prod', '--yes'], { shell: true });
         deployProcess.stdout.on('data', (data) => process.stdout.write(data.toString()));

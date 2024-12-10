@@ -64,9 +64,9 @@ const program = new Command();
         .option('--build-tool <string>', 'Build tool to use (e.g., webpack, vite)', 'webpack')
         .action(async (options) => {
             const autoDocumenter = new ReactAutoDocumenter(options.path, options.fileLimits, options.buildTool);
-            const pr_url = await autoDocumenter.run();
+            await autoDocumenter.run();
 
-            consola.info(pr_url);
+            consola.success('Documentation generated successfully');
         });
 
     // Parse the arguments

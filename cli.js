@@ -70,8 +70,6 @@ const program = new Command();
             );
 
             await autoDocumenter.run();
-
-            consola.success('Documentation generated successfully');
         });
 
     // Parse the arguments

@@ -626,6 +626,18 @@ class ReactAutoDocumenter {
 
     async run() {
         if (this.mode === 'local') {
+            // check if storybook is installed
+            const storybookExists = fs.existsSync(
+                path.join(this.local_path, ".storybook") // check if storybook exists
+            );
+
+            if (!storybookExists) {
+                consola.warn("Please initialize storybook in your project before running this tool");
+                consola.warn("Run `npx storybook@latest init` in your project root directory to initialize storybook");
+
+                return;
+            }
+
             await this.loop_and_add_documentation_to_files(this.file_limits, this.local_path);
         } else {
             const { path: temporary_directory, cleanup } = await tmpFiles.dir({
@@ -648,6 +660,7 @@ class ReactAutoDocumenter {
 
         // log the analytics
         console.table(this.analytics);
+        consola.success('Documentation generated successfully');
     }
 }
 
